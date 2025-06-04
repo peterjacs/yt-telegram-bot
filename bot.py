@@ -1,28 +1,34 @@
 import os
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
-from pytube import YouTube
+import yt_dlp
 
-# توکن بات تلگرام را اینجا قرار دهید (از @BotFather گرفته‌اید)
 TOKEN = "8123151609:AAGPDRyCWsioC6A1OfU9It7OfSd4y87jbJo"
 
 def start(update: Update, context: CallbackContext):
-    update.message.reply_text('سلام! لینک یوتیوب رو بفرست تا برات دانلود کنم.')
+    update.message.reply_text('سلام! لینک یوتیوب را بفرستید تا دانلود کنم.')
 
 def download_video(update: Update, context: CallbackContext):
-    chat_id = update.message.chat_id
     url = update.message.text
+    chat_id = update.message.chat_id
 
     try:
-        yt = YouTube(url)
-        video = yt.streams.get_highest_resolution()  # بهترین کیفیت
-        video.download(filename='video.mp4')
-        
+        # تنظیمات yt-dlp
+        ydl_opts = {
+            'format': 'best',  # بهترین کیفیت
+            'outtmpl': 'video.%(ext)s',  # نام فایل خروجی
+            'quiet': True,  # عدم نمایش پیام‌های اضافی
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            filename = ydl.prepare_filename(info)
+
         # ارسال ویدیو به کاربر
-        context.bot.send_video(chat_id=chat_id, video=open('video.mp4', 'rb'))
+        context.bot.send_video(chat_id=chat_id, video=open(filename, 'rb'))
         
         # حذف فایل موقت
-        os.remove('video.mp4')
+        os.remove(filename)
     except Exception as e:
         update.message.reply_text(f"خطا: {e}")
 
